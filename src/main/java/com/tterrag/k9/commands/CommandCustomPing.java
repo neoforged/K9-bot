@@ -153,20 +153,6 @@ public class CommandCustomPing extends CommandPersisted<ConcurrentHashMap<Long, 
     private static final Flag FLAG_RM = new SimpleFlag('r', "remove", "Removes a custom ping by its pattern.", true);
     private static final Flag FLAG_LS = new SimpleFlag('l', "list", "Lists your pings for this guild.", false);
 
-    private static final Argument<String> ARG_PATTERN = new WordArgument("pattern", "The regex pattern to match messages against for a ping to be sent to you. Must be inside slashes, e.g. `/foo.*bar/`.", true) {
-        @Override
-        public Pattern pattern() {
-            return Patterns.REGEX_PATTERN;
-        }
-        
-        @Override
-        public boolean required(Collection<Flag> flags) {
-           return flags.contains(FLAG_ADD);
-        }
-    };
-    
-    private static final Argument<String> ARG_TEXT = new SentenceArgument("pingtext", "The text to use when notifying you about the ping.", false);
-
     public CommandCustomPing() {
         super(NAME, false, ConcurrentHashMap::new);
     }
@@ -249,7 +235,7 @@ public class CommandCustomPing extends CommandPersisted<ConcurrentHashMap<Long, 
     
     @Override
     public String getDescription(CommandContext ctx) {
-        return "Deprecated. Camelot custom pings instead via </custom-pings add:1143586065131782359>.";
+        return "Deprecated. Use Camelot custom pings instead via </custom-pings add:1143586065131782359>.";
     }
 
     @Override

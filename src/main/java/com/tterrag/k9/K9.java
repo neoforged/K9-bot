@@ -173,9 +173,9 @@ public class K9 {
                     .filter(this::isUser)
                     .flatMap(commandListener::onMessage))
 
-            .eventService("Increments", MessageCreateEvent.class, events -> events
-                    .filter(this::isUser)
-                    .flatMap(IncrementListener.INSTANCE::onMessage))
+//            .eventService("Increments", MessageCreateEvent.class, events -> events
+//                    .filter(this::isUser)
+//                    .flatMap(IncrementListener.INSTANCE::onMessage))
 
             // I'll add this back when/if it's needed
             /*
