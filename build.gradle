@@ -50,7 +50,7 @@ shadowJar {
 		exclude "*.html"
 		exclude dependency('org.projectlombok:lombok')
 	}
-    archiveFile = file("$buildDir/libs/k9-all.jar")
+    archiveFileName.set('k9-all.jar')
 }
 
 repositories {
