@@ -19,7 +19,7 @@ import com.tterrag.k9.util.annotation.Nullable;
 
 import reactor.core.publisher.Mono;
 
-@Command
+// @Command
 public class CommandDrama extends CommandBase {
     
     private final ScriptingContainer sc = new ScriptingContainer();
