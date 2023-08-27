@@ -50,6 +50,7 @@ shadowJar {
 		exclude "*.html"
 		exclude dependency('org.projectlombok:lombok')
 	}
+    archiveFile = file("$buildDir/libs/k9-all.jar")
 }
 
 repositories {
@@ -82,4 +83,10 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.22'
     
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+}
+
+tasks.register('outputVersion') {
+    doLast {
+        file(System.getenv('GITHUB_ENV')) << "\nBOT_VERSION=${project.version}"
+    }
 }

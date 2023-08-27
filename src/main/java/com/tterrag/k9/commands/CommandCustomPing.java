@@ -224,25 +224,7 @@ public class CommandCustomPing extends CommandPersisted<ConcurrentHashMap<Long, 
                         .send()))
                     .orElse(ctx.error("No pings to list!"));
         } else if (ctx.hasFlag(FLAG_ADD)) {
-            Matcher matcher = Patterns.REGEX_PATTERN.matcher(ctx.getArg(ARG_PATTERN));
-            matcher.find();
-            Pattern pattern = Pattern.compile(matcher.group(1));
-            
-            String text = ctx.getArgOrElse(ARG_TEXT, "You have a new ping!");
-            CustomPing ping = new CustomPing(pattern, text);
-            
-            return storage.get(ctx)
-                      .map(data -> data.computeIfAbsent(authorId, $ -> Collections.synchronizedList(new ArrayList<>())))
-                      .map(pings -> pings.isEmpty()
-                              ? Mono.justOrEmpty(ctx.getAuthor())
-                                    .flatMap(User::getPrivateChannel)
-                                    .flatMap(c -> ctx.getGuild().flatMap(g -> c.createMessage("You just added your first ping for **" + g.getName() + "**. This is a test message to be sure that you are able to receive DMs from there.")))
-                                    .onErrorResume(IS_403_ERROR, t -> ctx.error("Could not send test DM, make sure you allow DMs from this guild!"))
-                                    .thenReturn(pings)
-                              : Mono.just(pings))
-                      .orElse(Mono.empty())
-                      .doOnNext(pings -> pings.add(ping))
-                      .flatMap($ -> ctx.reply("Added a new custom ping for the pattern: `" + pattern + "`"));
+            return ctx.reply("K9 pings are deprecated! Please consider using Camelot custom pings instead via </custom-pings add:1143586065131782359>.");
         } else if (ctx.hasFlag(FLAG_RM)) {
             return storage.get(ctx)
                     .map(data -> data.getOrDefault(authorId, Collections.emptyList())) // Try to remove by pattern
@@ -267,7 +249,7 @@ public class CommandCustomPing extends CommandPersisted<ConcurrentHashMap<Long, 
     
     @Override
     public String getDescription(CommandContext ctx) {
-        return "Use this command to create a custom ping, when any message is sent in this guild that matches the given regex, you will be notified via PM.";
+        return "Deprecated. Camelot custom pings instead via </custom-pings add:1143586065131782359>.";
     }
 
     @Override
