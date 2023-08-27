@@ -88,6 +88,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
     public static final TrickType DEFAULT_TYPE = TrickType.STRING;
     
     private static final Requirements REMOVE_PERMS = Requirements.builder().with(Permission.MANAGE_MESSAGES, RequiredType.ALL_OF).build();
+    private static final Snowflake REMOVE_PERMS_ROLE = Snowflake.of(System.getenv("TRICK_MASTER_ROLE") == null ? "0" : System.getenv("TRICK_MASTER_ROLE"));
     private static final Requirements OFFICIAL_PERMS = Requirements.builder()
             .with(Permission.ADMINISTRATOR, RequiredType.ONE_OF)
             .with(Permission.MANAGE_GUILD, RequiredType.ONE_OF)
@@ -294,7 +295,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                 existing = storage.get(ctx).get().get(trick);
                 TrickData data;
                 if (existing != null) {
-                    if (existing.getOwner() != ctx.getAuthor().get().getId().asLong() && !REMOVE_PERMS.matches(ctx).block()) {
+                    if (existing.getOwner() != ctx.getAuthor().get().getId().asLong() && !(REMOVE_PERMS.matches(ctx).block() || ctx.getMember().map(member -> member.getRoleIds().contains(REMOVE_PERMS_ROLE)).block())) {
                         return ctx.error("A trick with this name already exists in this guild.");
                     }
                     if (!ctx.hasFlag(FLAG_UPDATE)) {
@@ -320,7 +321,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
             if (trick == null) {
                 return ctx.error("No trick with that name!");
             }
-            if (trick.getOwner() != ctx.getAuthor().get().getId().asLong() && !REMOVE_PERMS.matches(ctx).block()) {
+            if (trick.getOwner() != ctx.getAuthor().get().getId().asLong() && !(REMOVE_PERMS.matches(ctx).block() || ctx.getMember().map(member -> member.getRoleIds().contains(REMOVE_PERMS_ROLE)).block())) {
                 return ctx.error("You do not have permission to remove this trick!");
             }
             tricks.remove(id);
