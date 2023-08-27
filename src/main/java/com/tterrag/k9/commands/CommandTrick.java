@@ -1,5 +1,6 @@
 package com.tterrag.k9.commands;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -47,6 +48,8 @@ import com.tterrag.k9.util.annotation.Nullable;
 
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Message;
+import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Permission;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -355,6 +358,12 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                 }
                 return ctx.reply(builder.build());
             } else if (ctx.hasFlag(FLAG_SRC)) {
+                if (data.getInput().length() > 1900) {
+                    final TrickData finalData = data;
+                    return ctx.getChannel().flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
+                            .addFile("trick." + (finalData.getType().getHighlighter().isEmpty() ? "txt" : finalData.getType().getHighlighter()), new ByteArrayInputStream(finalData.getInput().getBytes(StandardCharsets.UTF_8)))
+                            .build()));
+                }
                 return ctx.reply("```" + data.getType().getHighlighter() + "\n" + data.getInput() + "\n```");
             } else {
                 Trick trick = getTrick(ctx, td, global);
