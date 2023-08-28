@@ -47,8 +47,16 @@ import com.tterrag.k9.util.annotation.NonNull;
 import com.tterrag.k9.util.annotation.Nullable;
 
 import discord4j.common.util.Snowflake;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.component.ActionRow;
+import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.GuildChannel;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.MessageCreateFields;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.Permission;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +70,7 @@ import reactor.netty.http.client.HttpClient;
 public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, TrickData>> {
 
     private static final int TRICK_VERSION = 1;
+    public static final String DELETE_TRICK_ID = "delete-trick/";
 
     @Value
     @RequiredArgsConstructor
@@ -149,8 +158,31 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
         
         final CommandClojure clj = (CommandClojure) ctx.getK9().getCommands().findCommand((Snowflake) null, "clj").get();
         TrickFactories.INSTANCE.addFactory(TrickType.CLOJURE, code -> new TrickClojure(clj, code));
-        
-        return super.onReady(ctx);
+
+        return super.onReady(ctx)
+                .then(ctx.on(ButtonInteractionEvent.class)
+                        .flatMap(event -> {
+                            if (event.getCustomId().startsWith(DELETE_TRICK_ID)) {
+                                String id = event.getCustomId().substring(DELETE_TRICK_ID.length());
+                                Map<String, TrickData> tricks = storage.get(event.getInteraction().getGuildId().get());
+                                final TrickData trick = tricks.get(id);
+                                if (trick == null) {
+                                    return event.reply("No trick with that name!");
+                                }
+                                if (trick.getOwner() != event.getInteraction().getUser().getId().asLong() && !canManage(event.getInteraction().getMember().get())) {
+                                    return event.reply("You do not have permission to remove this trick!");
+                                }
+                                tricks.remove(id);
+                                trickCache.computeIfPresent(event.getInteraction().getGuild().block().getId().asLong(), (i, m) -> {
+                                    m.remove(id);
+                                    return m.isEmpty() ? null : m;
+                                });
+                                return event.reply()
+                                        .withContent("Removed trick!")
+                                        .withFiles(MessageCreateFields.File.of("trick." + trick.getType().getExtension(), new ByteArrayInputStream(trick.getInput().getBytes(StandardCharsets.UTF_8))));
+                            }
+                            return Mono.empty();
+                        }).then());
     }
     
     @Override
@@ -295,7 +327,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                 existing = storage.get(ctx).get().get(trick);
                 TrickData data;
                 if (existing != null) {
-                    if (existing.getOwner() != ctx.getAuthor().get().getId().asLong() && !(REMOVE_PERMS.matches(ctx).block() || ctx.getMember().map(member -> member.getRoleIds().contains(REMOVE_PERMS_ROLE)).block())) {
+                    if (existing.getOwner() != ctx.getAuthor().get().getId().asLong() && !canManage(ctx)) {
                         return ctx.error("A trick with this name already exists in this guild.");
                     }
                     if (!ctx.hasFlag(FLAG_UPDATE)) {
@@ -321,7 +353,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
             if (trick == null) {
                 return ctx.error("No trick with that name!");
             }
-            if (trick.getOwner() != ctx.getAuthor().get().getId().asLong() && !(REMOVE_PERMS.matches(ctx).block() || ctx.getMember().map(member -> member.getRoleIds().contains(REMOVE_PERMS_ROLE)).block())) {
+            if (trick.getOwner() != ctx.getAuthor().get().getId().asLong() && !canManage(ctx)) {
                 return ctx.error("You do not have permission to remove this trick!");
             }
             tricks.remove(id);
@@ -351,16 +383,26 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
             final TrickData td = data;
 
             if (ctx.hasFlag(FLAG_INFO)) {
-                EmbedCreator.Builder builder = EmbedCreator.builder()
+                EmbedCreateSpec.Builder builder = EmbedCreateSpec.builder()
                         .title(ctx.getArg(ARG_TRICK))
-                        .description("Owner: " + ctx.getClient().getUserById(Snowflake.of(data.getOwner())).block().getMention())
-                        .field("Type", data.getType().toString(), true)
-                        .field("Global", Boolean.toString(global), true)
-                        .field("Official", Boolean.toString(data.isOfficial()), true);
+                        .addField("Owner", ctx.getClient().getUserById(Snowflake.of(data.getOwner()))
+                                .map(user -> user.getMention() + " (" + user.getUsername() + ")").block(), true)
+                        .addField("Type", data.getType().toString(), true)
+                        .addField("Global", Boolean.toString(global), true)
+                        .addField("Official", Boolean.toString(data.isOfficial()), true);
                 if (ctx.hasFlag(FLAG_SRC)) {
-                    builder.field("Source", "```" + data.getType().getHighlighter() + "\n" + data.getInput() + "\n```", false);
+                    builder.description("Source:\n```" + data.getType().getHighlighter() + "\n" + data.getInput() + "\n```");
                 }
-                return ctx.reply(builder.build());
+
+                final MessageCreateSpec.Builder messageBuilder = MessageCreateSpec.builder()
+                        .addEmbed(builder.build());
+
+                if (td.owner == ctx.getAuthor().get().getId().asLong() || canManage(ctx)) {
+                    messageBuilder.addComponent(ActionRow.of(
+                            Button.danger(DELETE_TRICK_ID + ctx.getArg(ARG_TRICK), "Delete Trick")
+                    ));
+                }
+                return ctx.getChannel().flatMap(channel -> channel.createMessage(messageBuilder.build()));
             } else if (ctx.hasFlag(FLAG_SRC)) {
                 if (data.getInput().length() > 1900) {
                     final TrickData finalData = data;
@@ -395,6 +437,14 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                         .flatMap(ctx::reply);
             }
         }
+    }
+
+    private static boolean canManage(CommandContext ctx) {
+        return REMOVE_PERMS.matches(ctx).block() || ctx.getMember().map(member -> member.getRoleIds().contains(REMOVE_PERMS_ROLE)).block();
+    }
+
+    private static boolean canManage(Member member) {
+        return REMOVE_PERMS.matches(member).block() || member.getRoleIds().contains(REMOVE_PERMS_ROLE);
     }
 
     private BakedMessage addFooter(BakedMessage msg, String footer) {
