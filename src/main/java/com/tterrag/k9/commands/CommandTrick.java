@@ -236,7 +236,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                 return ctx.getChannel()
                         .flatMap(channel -> new ListMessageBuilder<String>("tricks")
                                 .addObjects(tricks)
-                                .objectsPerPage(10)
+                                .objectsPerPage(30)
                                 .build(channel, ctx.getMessage())
                                 .send());
             }
@@ -317,7 +317,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
             }
             String id = ctx.getArg(ARG_TRICK);
             Map<String, TrickData> tricks = ctx.hasFlag(FLAG_GLOBAL) ? globalTricks : storage.get(ctx).orElse(null);
-            TrickData trick = tricks.get(id);
+            final TrickData trick = tricks.get(id);
             if (trick == null) {
                 return ctx.error("No trick with that name!");
             }
@@ -329,7 +329,10 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                m.remove(id);
                return m.isEmpty() ? null : m;
             });
-            return ctx.reply("Removed trick!");
+            return ctx.getChannel()
+                    .flatMap(channel -> channel.createMessage(m -> m
+                            .setContent("Removed trick!")
+                            .addFile("trick." + trick.getType().getExtension(), new ByteArrayInputStream(trick.getInput().getBytes(StandardCharsets.UTF_8)))));
         } else {
             Map<String, TrickData> dataMap = storage.get(ctx).orElse(null);
             TrickData data = dataMap == null ? null : dataMap.get(ctx.getArg(ARG_TRICK));
@@ -362,7 +365,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                 if (data.getInput().length() > 1900) {
                     final TrickData finalData = data;
                     return ctx.getChannel().flatMap(channel -> channel.createMessage(MessageCreateSpec.builder()
-                            .addFile("trick." + (finalData.getType().getHighlighter().isEmpty() ? "txt" : finalData.getType().getHighlighter()), new ByteArrayInputStream(finalData.getInput().getBytes(StandardCharsets.UTF_8)))
+                            .addFile("trick." + finalData.getType().getExtension(), new ByteArrayInputStream(finalData.getInput().getBytes(StandardCharsets.UTF_8)))
                             .build()));
                 }
                 return ctx.reply("```" + data.getType().getHighlighter() + "\n" + data.getInput() + "\n```");

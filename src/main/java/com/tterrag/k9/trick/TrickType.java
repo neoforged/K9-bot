@@ -14,6 +14,10 @@ public interface TrickType {
     default String getHighlighter() {
         return "";
     }
+
+    default String getExtension() {
+        return "txt";
+    }
     
     Map<String, TrickType> byId = new HashMap<>();
     
@@ -48,6 +52,11 @@ public interface TrickType {
         
         public HighlightedType(String id, String name) {
             this(id, name, name);
+        }
+
+        @Override
+        public String getExtension() {
+            return highlighter;
         }
     }
     
