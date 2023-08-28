@@ -268,7 +268,7 @@ public class CommandTrick extends CommandPersisted<ConcurrentHashMap<String, Tri
                 return ctx.getChannel()
                         .flatMap(channel -> new ListMessageBuilder<String>("tricks")
                                 .addObjects(tricks)
-                                .objectsPerPage(30)
+                                .objectsPerPage(20)
                                 .build(channel, ctx.getMessage())
                                 .send());
             }
